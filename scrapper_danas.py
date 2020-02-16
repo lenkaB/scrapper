@@ -1,4 +1,3 @@
-alo_url = "https://www.alo.rs/vesti/region/koliko-slova-ima-crnogorska-azbuka-odgovor-glasi-zavisi-gde-studirate/199085/vest"
 from bs4 import BeautifulSoup
 import requests
 from scrapper import pretraga, pack_xml
@@ -37,7 +36,7 @@ def extract_danas(url):
 
                     year = article['date'].split('-')[0].strip()
 
-                    if year not in year_counter or year_counter[year]>50:
+                    if year not in year_counter or year_counter[year]>100:
                         print('not the right year ',year)
                         return
 

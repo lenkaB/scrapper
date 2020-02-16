@@ -1,6 +1,7 @@
 import xml.etree.cElementTree as ET
 import cyrtranslit
-
+import os
+import xml.etree.ElementTree as ET
 
 
 portali = {'blic': '02',
@@ -63,13 +64,8 @@ def pack_xml(article, id):
     tree = ET.ElementTree(root)
     file = article_code+".xml"
     #print(article_code)
-    tree.write('/Users/lenka/Desktop/'+portal+'new/'+file, encoding='utf-8')
+    tree.write('/Users/lenka/Desktop/'+portal+'/'+file, encoding='utf-8')
 
-
-
-import os
-
-import xml.etree.ElementTree as ET
 
 def analyze_sort_xml(folder):
     '''
@@ -93,7 +89,21 @@ def analyze_sort_xml(folder):
 
             root = ET.parse(filepath).getroot()
 
-            title = root.find('article').find('article-title').text
+            title = root.find('article').find('article-title').text.replace('&quot;','')\
+                .replace('è','č').replace('æ','ć').replace('ð','đ').replace('&amp;#x201c;','')
+
+            if title.startswith(':'):
+                title = title[3:]
+
+            if title.endswith('\n'):
+                title = title[:-2]
+
+            if not title.endswith('"'):
+                continue
+
+            if title.startswith(' '):
+                title = title[1:]
+
             if title in titles:
                 print('duplicate ', article_id, title)
                 continue
@@ -104,7 +114,9 @@ def analyze_sort_xml(folder):
             if '.' in date:
                 year = date.split('.')[2]
             else:
-                year = date.split('-')[0]
+                year = date.split('-')[0].strip()
+                if len(year)==2:
+                    year = date.split('-')[2].strip()
 
             if year not in year_counter:
                 print('incorrect year ',year, article_id)
@@ -120,7 +132,9 @@ def analyze_sort_xml(folder):
 
     index = 1
     for title in sorted(titles):
-        print(title, titles[title])
+        print(title, titles[title], str(index))
+
+
         sorted_folder = folder+'sorted'
 
         #print(sorted_folder)
@@ -133,10 +147,9 @@ def analyze_sort_xml(folder):
         ET.SubElement(root, "local-id").text = str(index)
 
         tree.write(sorted_folder+'/sr-'+root.find('source-id').text+'-'+str(index)+'.xml', encoding = 'utf-8')
-        #tree.write('/Users/lenka/Desktop/' + portal + '/' + file, encoding='utf-8')
         index+=1
 
     print(year_counter)
     print('total ', total)
 
-#analyze_sort_xml('/Users/lenka/Desktop/blic')
+analyze_sort_xml('/Users/lenka/Desktop/b92final')

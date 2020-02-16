@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 from scrapper import pretraga, pack_xml
 
-year_counter = {'2018':0} #,'2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0} #, '2019':0, '2020':0}
 
 links = []
 
@@ -24,7 +24,7 @@ def extract_srbijadanas(url):
 
     year = article['date'].split('-')[0].strip() #sometime year is at 0 sometime 2
 
-    if year not in year_counter or year_counter[year] > 50:
+    if year not in year_counter or year_counter[year] > 100:
         print('incorrect year ',year)
         return
 
@@ -64,8 +64,6 @@ def extract_srbijadanas(url):
         for span in comment_span:
             article['comments'][str(comment_id)] = span.text.strip()
 
-
-
     article['author'] = content.find('span', attrs={"class": "article__author"}).text
 
 
@@ -76,10 +74,12 @@ def extract_srbijadanas(url):
 
 
 def scrapper_srbijadanas():
-    i = 252
+    i = 238
     for word in pretraga:
-        pg = 200
-        while pg >66 :
+        if word in ['jezik', 'jezika', 'jeziku']:
+            continue
+        pg = 10
+        while pg <30 :
             main_url = 'https://www.srbijadanas.com/search-results/' + word + '?page=' + str(pg)
             print('main url ', main_url)
             response = requests.get(main_url, timeout=5)
@@ -103,7 +103,7 @@ def scrapper_srbijadanas():
                     print('packed xml ' + str(i) + '\n')
                     i += 1
 
-            pg -= 1
+            pg += 1
             print(year_counter)
 
 

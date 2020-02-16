@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 from scrapper import pretraga,pack_xml
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':100, '2020':100}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':101, '2020':101}
 links = []
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
@@ -15,9 +15,9 @@ def scrapper_blic():
     i = 204
 
     for word in pretraga:
-        if word=='jezik':
+        if word in ['jezik', 'jezika', 'jeziku']:
             continue
-        pg = 5
+        pg = 10
         while pg<42:
             main_url = main + word + '&strana=' + str(pg)
             print('main url ', main_url)
@@ -155,10 +155,5 @@ def extract_blic(url):
         print(el, article[el])
 
     return article
-
-
-
-
-
 
 scrapper_blic()

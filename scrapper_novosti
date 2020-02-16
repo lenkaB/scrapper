@@ -1,0 +1,199 @@
+from scrapper import pretraga, pack_xml
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
+import requests
+import time
+
+# div class=“articleBody"
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0, '2020':0}
+article_links = []
+
+driver = webdriver.Chrome(ChromeDriverManager().install())
+driver2 = webdriver.Chrome(ChromeDriverManager().install())
+
+main = 'https://www.novosti.rs/vesti/naslovna/pretraga.30.html?q='
+end = '&dt=back&dp=1y'
+
+meseci = {'januar':'01', 'februar':'02', 'mart': '03',
+          'april': '04', 'maj': '05', 'jun': '06',
+          'jul': '07', 'avgust': '08', 'septembar': '09',
+          'oktobar': '10', 'novembar': '11', 'decembar': '12'}
+
+def extract_novosti(url):
+    if url in article_links:
+        return
+    response = requests.get(url, timeout=5)
+    content = BeautifulSoup(response.content, "html.parser")
+
+    #driver.get(url)
+    article_links.append(url)
+    article = {'url': url}
+
+    article_info = content.find('div', attrs={'class': 'articleInfo'})
+    if not article_info:
+        return
+    article_info = article_info.text
+    article['date'] = article_info.split('|')[1] #TODO
+
+    if len(article['date'].split('.'))<2:
+        return
+
+    #print(article['date'], article['date'].split('.')[1])
+    year = article['date'].split('.')[1].strip().split(' ')[1]
+    if year not in year_counter:
+        return
+
+    for el in article['date'].split():
+        if (':') in el:
+            break
+        if '.' in el:
+            if len(el)>3:
+                y = el.replace('.','')
+            else:
+                d = el.replace('.','')
+        else:
+            if el in meseci:
+                m = meseci[el]
+            else:
+                return
+
+    article['date'] = y+'-'+m+'-'+d
+
+
+    if content.find('div', attrs={'class': 'articleLead'}):
+        article['lead'] = content.find('div', attrs={'class': 'articleLead'}).text.split('/*')[0]
+    else:
+        article['lead'] = ''
+
+    body = content.find('div', attrs={'class': 'articleBody'})
+    if not body:
+        return
+    text = ''
+    for p in body.find_all('p'):
+        if '/*' in p.text:
+            continue
+        text+=''+p.text
+
+    article['text'] = article['lead'].strip()+'. '+text
+
+
+    keyword_present = False
+    for word in pretraga:
+        if word in article['text'].lower():
+            keyword_present = True
+            break
+
+    if not keyword_present:
+        print('no keyword')
+        return  #
+
+
+    article['title'] = content.find('title').text.split('|')[0]
+    article['author'] = article_info.split('|')[0]
+
+    year_counter[year]+=1
+
+    article['comments'] = {}
+    comments = {}
+
+    if article_info.split('|')[2].split(':')[1].strip()!='0':
+        print(article_info.split('|')[2].split(':')[1].strip())
+
+        #if there are any comments
+
+        driver2.get(url)
+        time.sleep(10)
+
+
+        driver2.find_element_by_class_name("loadComments.topCommentsLink").click()
+        print(url)
+        time.sleep(5)
+        #driver2.execute_script("window.scrollTo(0, window.scrollY + 200)")
+
+        '''
+        try:
+            driver.find_element_by_class_name("moreComments").click()
+    
+            time.sleep(3)
+        finally:
+            print('no more comments')
+        '''
+
+
+        main_comment_div = driver2.find_element_by_class_name("comments")
+
+        comment_divs = main_comment_div.find_elements_by_tag_name('li')
+
+        comment_id = 1
+        for comment_div in comment_divs:
+            comment = comment_div.find_elements_by_tag_name('div')
+            for c in comment:
+                if c.get_attribute('class')=='comment depth-1':
+                    #print('parent comment')
+                    #print(c.find_element_by_tag_name('p').text)
+                    comments[str(comment_id)] = c.find_element_by_tag_name('p').text
+                    comment_id+=1
+                    child = 1
+                elif c.get_attribute('class')=='comment depth-2':
+                    #print('child comment')
+                    #print(c.find_element_by_tag_name('p').text)
+                    if c.find_element_by_tag_name('p').text not in comments.values():
+                        comments[str(comment_id-1)+'-'+str(child)] = c.find_element_by_tag_name('p').text
+                        child+=1
+
+        article['comments'] = comments
+
+
+    for el in article:
+        print(el, article[el])
+
+    return article
+
+def scrapper_novosti():
+    i=100
+
+    for word in pretraga:
+        #if word in ['jezik', 'jezika']:
+        #    continue
+        page_no = 2
+        main_url = main+word+end
+        driver.get(main_url)
+
+        '''
+        driver.find_element_by_class_name("gsc-option-selector").click()
+        options = driver.find_elements_by_class_name("gsc-option-menu-item")
+        for option in options:
+            if option.text == 'Važnosti':
+                option.click()
+        '''
+
+        while page_no < 11:
+            time.sleep(5)
+            links = driver.find_elements_by_class_name("gs-title")
+
+            for link in links:
+                if link.get_attribute('href'):
+                    article = extract_novosti(link.get_attribute('href'))
+                    if article:
+                        pack_xml(article, i)
+                        i += 1
+
+            print(year_counter)
+
+            page_numbers = driver.find_elements_by_class_name("gsc-cursor-page")
+            for page_number in page_numbers:
+                if page_number.text == str(page_no):
+                    print('switching to page ' + str(page_no))
+                    driver.execute_script("window.scrollTo(0, window.scrollY + 200)")
+                    page_number.click()
+                    page_no += 1
+                    break
+
+        #time.sleep(3)
+
+
+
+scrapper_novosti()
+#extract_novosti("https://www.novosti.rs/vesti/naslovna/drustvo/aktuelno.290.html:774183-PITANjE-DRUGOG-STRANOG-JEZIKA-Umesto-ocena-na-prvom-polugodistu-dobar-zadovoljava-i-istice-se")
+

@@ -6,7 +6,7 @@ from scrapper import pretraga, pack_xml
 kurir_komentari = 'https://www.kurir.rs/crna-hronika/3407595/platio-2-500-evra-za-noc-sa-radom-manojlovic-i-jos-1000-za-ruze-bisnimen-u-velikoj-seks-parevari-citajte-u-kuriru'
 kurir = "https://www.kurir.rs/planeta/1544807/nov-biser-ruze-tomasic-predsednik-srbije-unistava-hrvatski-jezik/"
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0} #'2019':0, '2020':0}
 links = []
 
 # WHEN YEARCOUNTER REACHES MAX GO TO FURTHER PAGE (articles from 2015/16)
@@ -31,7 +31,7 @@ def extract_kurir(url):
 
                     year = article['date'].split('-')[0].strip()
 
-                    if year not in year_counter or year_counter[year] > 50:
+                    if year not in year_counter or year_counter[year] > 100:
                         print('not the right year ', year)
                         return
 
@@ -94,10 +94,12 @@ def extract_kurir(url):
 
 
 def scrapper_kurir():
-    i = 164
+    i = 523
     for word in pretraga:
-        pg = 5
-        while pg < 11 and i<300:
+        if word in ['jezik', 'jezika']:
+            continue
+        pg = 1
+        while pg < 15:
             main_url = 'https://www.kurir.rs/pretraga/strana/'+str(pg)+'?q='+word
             print('main url ', main_url)
 
@@ -131,5 +133,5 @@ def scrapper_kurir():
             print('current year counter ',year_counter)
             print('page ', pg)
 
-scrapper_kurir()
+#scrapper_kurir()
 print(year_counter)

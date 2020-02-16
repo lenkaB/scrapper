@@ -1,4 +1,3 @@
-
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
@@ -39,8 +38,8 @@ def load_links_from_page_b92(current_article_id):
         if not link:
             continue
 
-        if link.text:
-            print(link.text)
+        #if link.text:
+        #    print(link.text)
 
         if link.text and len(link.text.split(' ')) > 2 and not 'Google' in link.text and not 'video' in link.get_attribute('href'):
             test = load_link_from_page_b92(link, current_article_id)
@@ -61,7 +60,16 @@ def extract_b92(url):
         if 'headline' in el.text:
             for row in el.text.split('\n'):
                 if 'headline' in row:
-                    article['title'] = row.split(':')[1]
+
+                    if len(row.split(':'))>2:
+                        title = ''
+                        for el in row.split(':')[1:]:
+                            title+=': '+el
+                        article['title'] = title
+                    else:
+                        article['title'] = row.split(':')[1]
+
+
 
                     if article['title'] in article_titles:
                         print('copy ', article['title'])
@@ -70,7 +78,7 @@ def extract_b92(url):
                 if 'datePublished' in row:
                     article['date'] = row.split(':')[1].split('T')[0].strip().replace('"','') #fix
                     year = article['date'].split('-')[0]
-                    if year not in year_counter or year_counter[year]>50:
+                    if year not in year_counter: # or year_counter[year]>50:
                         print('bad year ',year)
                         return
 
@@ -94,13 +102,19 @@ def extract_b92(url):
 
     article['text'] = article['description']+ text
 
-    print(article['text'])
-
     keyword_present = False
+
     for word in pretraga:
-        if word in article['text'].lower():
+        if 'title' not in article:
+            return
+        if word in article['title'].lower():
             keyword_present = True
             break
+    if not keyword_present:
+        for word in pretraga:
+            if word in article['text'].lower():
+                keyword_present = True
+                break
 
     if not keyword_present:
         print('no keyword')
@@ -132,6 +146,19 @@ def extract_b92(url):
             if len(s.text.split(':'))>1:
                 article['author'] = s.text.split(':')[1].split('\n')[0]
 
+    title = article['title']
+    if '&quot;' in title:
+        title = title.replace('&quot;', '')
+        # print('clean ', title)
+        article['title'] = title
+
+    if title.strip().endswith(','):
+        article['title'] = title[:-2]
+        title = title[:-2]
+        # print('comma')
+
+    if not title.endswith('"'):
+        print('incomplete ', title)
 
     for e in article:
         print(e)
@@ -147,36 +174,38 @@ def scrapper_b92(word, current_article_id):
     box.send_keys(word)
     box.send_keys('\ue007')
 
-    #load links from a certain page:
-    i = 0
-    i = 0
-    current_article_id = load_links_from_page_b92(current_article_id)
-
-    i += 1
+    time.sleep(3)
+    driver.find_element_by_class_name("gsc-option-selector").click()
+    options = driver.find_elements_by_class_name("gsc-option")
+    for option in options:
+        if option.text == 'Relevantnosti':
+            option.click()
 
     # look for page numbers and change pages
-    page_numbers = driver.find_elements_by_class_name("gsc-cursor-page")
-    page_no = 2
+    page_no = 1
 
-    for page_number in driver.find_elements_by_class_name("gsc-cursor-page"):
-        #time.sleep(5)
-        print(page_number.text)
-        if page_number.text == str(page_no):
-            print('switching to page '+str(page_no))
-            driver.execute_script("window.scrollTo(0, window.scrollY + 200)")
-            page_number.click()
-
-            current_article_id = load_links_from_page_b92(current_article_id)
-            i+=1
-            page_no+=1
-            break #ONLY ONE PAGE CHANGE
+    while page_no<11:
+        #time.sleep(3)
+        current_article_id = load_links_from_page_b92(current_article_id)
+        page_numbers = driver.find_elements_by_class_name("gsc-cursor-page")
+        for page_number in page_numbers:
+            if page_number.text == str(page_no):
+                print('switching to page '+str(page_no))
+                driver.execute_script("window.scrollTo(0, window.scrollY + 200)")
+                page_number.click()
+                page_no+=1
+                break
 
 
-    print(year_counter)
+
+        print(year_counter)
+
     return current_article_id
 
-current_article_id = 1
+current_article_id = 167
 for word in pretraga:
+    if word in ['jezik', 'jezika']:
+        continue
     current_article_id = scrapper_b92(word, current_article_id)
 
-print(year_counter)
+#print(year_counter)
