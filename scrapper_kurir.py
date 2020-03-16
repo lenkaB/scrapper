@@ -6,7 +6,7 @@ from scrapper import pretraga, pack_xml
 kurir_komentari = 'https://www.kurir.rs/crna-hronika/3407595/platio-2-500-evra-za-noc-sa-radom-manojlovic-i-jos-1000-za-ruze-bisnimen-u-velikoj-seks-parevari-citajte-u-kuriru'
 kurir = "https://www.kurir.rs/planeta/1544807/nov-biser-ruze-tomasic-predsednik-srbije-unistava-hrvatski-jezik/"
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0} #'2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0, '2019':0}
 links = []
 
 # WHEN YEARCOUNTER REACHES MAX GO TO FURTHER PAGE (articles from 2015/16)
@@ -14,7 +14,7 @@ links = []
 def extract_kurir(url):
     article = {'url': url}
     print(url)
-    response = requests.get(url, timeout=5)
+    response = requests.get(url, timeout=25)
     content = BeautifulSoup(response.content, "html.parser")
     article['lead'] = content.find_all('div', attrs={"class": "lead"})[0].text.strip()
 
@@ -31,7 +31,7 @@ def extract_kurir(url):
 
                     year = article['date'].split('-')[0].strip()
 
-                    if year not in year_counter or year_counter[year] > 100:
+                    if year not in year_counter:# or year_counter[year] > 100:
                         print('not the right year ', year)
                         return
 
@@ -63,7 +63,7 @@ def extract_kurir(url):
 
     url_comments = url +'/komentari'
 
-    response = requests.get(url_comments, timeout=5)
+    response = requests.get(url_comments, timeout=25)
     content_comments = BeautifulSoup(response.content, "html.parser")
 
     comments = content_comments.find_all('div', attrs={"class": "com_comment"})
@@ -94,16 +94,16 @@ def extract_kurir(url):
 
 
 def scrapper_kurir():
-    i = 523
+    i = 511
     for word in pretraga:
-        if word in ['jezik', 'jezika']:
+        if word in ['jezik','jezika','jeziku']:
             continue
         pg = 1
-        while pg < 15:
+        while pg < 20:
             main_url = 'https://www.kurir.rs/pretraga/strana/'+str(pg)+'?q='+word
             print('main url ', main_url)
 
-            response = requests.get(main_url, timeout=5)
+            response = requests.get(main_url, timeout=15)
             content = BeautifulSoup(response.content, "html.parser")
             article_links = content.find_all('a', attrs={"class": "itemLnk"})
 
@@ -133,5 +133,5 @@ def scrapper_kurir():
             print('current year counter ',year_counter)
             print('page ', pg)
 
-#scrapper_kurir()
+scrapper_kurir()
 print(year_counter)

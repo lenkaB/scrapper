@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 from scrapper import pretraga, pack_xml
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0}
 
 article_titles = []
 
@@ -10,7 +10,7 @@ url_danas = 'https://www.danas.rs/svet/vasington-priznao-crnogorski-jezik/'
 
 
 def extract_danas(url):
-    response = requests.get(url, timeout=5)
+    response = requests.get(url, timeout=10)
     content = BeautifulSoup(response.content, "html.parser")
     article_div = content.find_all('div', attrs={"class": "post-content content"})
 
@@ -24,9 +24,9 @@ def extract_danas(url):
         if 'title' in el.text:
             for row in el.text.split('\n'):
                 if 'authors:' in row:
-                    article['author'] = row.split(':')[1]
+                    article['author'] = row.split(':')[1].replace('"','').replace(',','')
                 if 'title:' in row:
-                    article['title'] = row.split(':')[1]
+                    article['title'] = row.split(':')[1].replace("&amp;quot;","").replace('"','').replace(',','')
                     if article['title'] in article_titles:
                         print('copy: ',article['title'])
                         return
@@ -36,7 +36,7 @@ def extract_danas(url):
 
                     year = article['date'].split('-')[0].strip()
 
-                    if year not in year_counter or year_counter[year]>100:
+                    if year not in year_counter:# or year_counter[year]>100:
                         print('not the right year ',year)
                         return
 
@@ -88,11 +88,13 @@ def extract_danas(url):
 
 
 def scrapper_danas():
-    i = 1
+    i = 475
     for word in pretraga:
+        if word=='jezik':
+            continue
         print(word)
         pg_num = 1
-        while pg_num<50:
+        while pg_num<200:
             main_url_danas = "https://www.danas.rs/page/"+str(pg_num)+"/?s="
             url_pretraga = main_url_danas + word
             response = requests.get(url_pretraga, timeout=5)

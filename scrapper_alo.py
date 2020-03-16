@@ -12,14 +12,14 @@ driver = webdriver.Chrome(ChromeDriverManager().install())
 main_url_alo = 'https://www.alo.rs/article/search?q='
 
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0}
 links = []
 
 def extract_alo(url):
     article = {'url':url}
     print(url)
 
-    response = requests.get(url, timeout=5)
+    response = requests.get(url, timeout=20)
     content = BeautifulSoup(response.content, "html.parser")
 
     if not article:
@@ -34,7 +34,7 @@ def extract_alo(url):
     m = date.split('.')[1]
     y = date.split('.')[2]
 
-    if y.strip() not in year_counter or year_counter[y.strip()] > 50:
+    if y.strip() not in year_counter:# or year_counter[y.strip()] > 50:
         print('not the right year ', y.strip())
         return
 
@@ -67,7 +67,7 @@ def extract_alo(url):
     article['comments'] = {}
     comments = content.find_all("li", attrs= {"id":"main-comment"})
 
-    com_id = 1  # very few comments, no replies
+    com_id = 1  # very few comments, rare replies
     for com in comments:
         #print(com.find_all('div', attrs={'class':'twelvecol'})[0].text.split('\n')[3])
         article['comments'][str(com_id)] = com.find_all('div', attrs={'class':'twelvecol'})[0].text.split('\n')[3]
@@ -81,47 +81,52 @@ def extract_alo(url):
 
 
 def scrapper_alo():
-    i = 0
-    while i<300:
-        for word in pretraga:
-            url_pretraga = main_url_alo+word
-            driver.get(url_pretraga)
-            scroll = 0
+    i = 364
+    #while i<1000:
 
-            while scroll<20:
-                time.sleep(5)
-                article_links = driver.find_elements_by_tag_name('a')
-                print('len ',len(article_links))
+    for word in pretraga:
+        if word in ['jezik','jezika','jeziku']:#,'jezikom']:
+            continue
 
-                for link in article_links:
-                    link_href = link.get_attribute('href')
-                    if link_href in links:
-                        #driver.execute_script("window.scrollTo(0, window.scrollY + 20)")
+        url_pretraga = main_url_alo+word
+        print('main url',url_pretraga)
+        driver.get(url_pretraga)
+        scroll = 0
+
+        while scroll<20:
+            time.sleep(5)
+            article_links = driver.find_elements_by_tag_name('a')
+            print('len ',len(article_links))
+
+            for link in article_links:
+                link_href = link.get_attribute('href')
+                if link_href in links:
+                    #driver.execute_script("window.scrollTo(0, window.scrollY + 20)")
+                    continue
+                links.append(link_href)
+                if link_href and (link_href).endswith('vest'):
+                    print(link_href, link.text)
+                    article = extract_alo(link_href)
+                    if not article:
                         continue
-                    links.append(link_href)
-                    if link_href and (link_href).endswith('vest'):
-                        print(link_href, link.text)
-                        article = extract_alo(link_href)
-                        if not article:
-                            continue
-                        print('extracted '+article['url'])
-                        pack_xml(article, i)
-                        print('packed xml ' +str(i)+'\n')
-                        i+=1
+                    print('extracted '+article['url'])
+                    pack_xml(article, i)
+                    print('packed xml ' +str(i)+'\n')
+                    i+=1
 
+            driver.execute_script("window.scrollTo(0, window.scrollY + 300)")
+            scroll+=1
+            try:
+                button = WebDriverWait(driver, 20).until(
+                    EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "PRIKAŽI JOŠ REZULTATA")))
+                button.click()
                 driver.execute_script("window.scrollTo(0, window.scrollY + 300)")
-                scroll+=1
-                try:
-                    button = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "PRIKAŽI JOŠ REZULTATA")))
-                    button.click()
-                    driver.execute_script("window.scrollTo(0, window.scrollY + 300)")
 
-                finally:
-                    print('cannot locate BUTTON',)
+            finally:
+                print('cannot locate BUTTON',)
 
-                print(year_counter)
+            print(year_counter)
 
 
-scrapper_alo()
+#scrapper_alo()
 print(year_counter)

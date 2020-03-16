@@ -2,14 +2,14 @@ from bs4 import BeautifulSoup
 import requests
 from scrapper import pretraga, pack_xml
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0} #, '2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0, '2019':0}
 
 links = []
 
 
 def extract_srbijadanas(url):
     print('extracting ',url)
-    response = requests.get(url, timeout=5)
+    response = requests.get(url, timeout=15)
     content = BeautifulSoup(response.content, "html.parser")
     article_div = content.find_all('div', attrs={"class": "article__body clearfix"})
 
@@ -24,7 +24,10 @@ def extract_srbijadanas(url):
 
     year = article['date'].split('-')[0].strip() #sometime year is at 0 sometime 2
 
-    if year not in year_counter or year_counter[year] > 100:
+    if year.isnumeric() and int(year)<2000:
+        year = article['date'].split('-')[2].strip()
+
+    if year not in year_counter: # or year_counter[year] > 100:
         print('incorrect year ',year)
         return
 
@@ -74,15 +77,16 @@ def extract_srbijadanas(url):
 
 
 def scrapper_srbijadanas():
-    i = 238
+    i = 970
     for word in pretraga:
-        if word in ['jezik', 'jezika', 'jeziku']:
-            continue
-        pg = 10
-        while pg <30 :
+        #if word in ['jezik', 'jezika', 'jeziku']:
+        #    continue
+        pg = 349
+        while pg <400 : # TODO
+
             main_url = 'https://www.srbijadanas.com/search-results/' + word + '?page=' + str(pg)
             print('main url ', main_url)
-            response = requests.get(main_url, timeout=5)
+            response = requests.get(main_url, timeout=15)
             content = BeautifulSoup(response.content, "html.parser")
             article_links = content.find_all('a', attrs={"class": "o-media__link"})
 

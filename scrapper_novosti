@@ -6,7 +6,7 @@ import requests
 import time
 
 # div class=“articleBody"
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0}
 article_links = []
 
 driver = webdriver.Chrome(ChromeDriverManager().install())
@@ -20,10 +20,35 @@ meseci = {'januar':'01', 'februar':'02', 'mart': '03',
           'jul': '07', 'avgust': '08', 'septembar': '09',
           'oktobar': '10', 'novembar': '11', 'decembar': '12'}
 
+
+
+def get_comments(comment_divs):
+    comments = {}
+    comment_id = 1
+    for comment_div in comment_divs:
+        comment = comment_div.find_elements_by_tag_name('div')
+        for c in comment:
+            if c.get_attribute('class') == 'comment depth-1':
+                # print('parent comment')
+                # print(c.find_element_by_tag_name('p').text)
+                comments[str(comment_id)] = c.find_element_by_tag_name('p').text
+                comment_id += 1
+                child = 1
+            elif c.get_attribute('class') == 'comment depth-2':
+                # print('child comment')
+                # print(c.find_element_by_tag_name('p').text)
+                if c.find_element_by_tag_name('p').text not in comments.values():
+                    comments[str(comment_id - 1) + '-' + str(child)] = c.find_element_by_tag_name('p').text
+                    child += 1
+
+    return comments
+
+
 def extract_novosti(url):
+    print(url)
     if url in article_links:
         return
-    response = requests.get(url, timeout=5)
+    response = requests.get(url, timeout=20)
     content = BeautifulSoup(response.content, "html.parser")
 
     #driver.get(url)
@@ -36,12 +61,15 @@ def extract_novosti(url):
     article_info = article_info.text
     article['date'] = article_info.split('|')[1] #TODO
 
+    #print(article['date'])
+
     if len(article['date'].split('.'))<2:
         return
 
     #print(article['date'], article['date'].split('.')[1])
     year = article['date'].split('.')[1].strip().split(' ')[1]
     if year not in year_counter:
+        print('wrong year', year)
         return
 
     for el in article['date'].split():
@@ -62,20 +90,34 @@ def extract_novosti(url):
 
 
     if content.find('div', attrs={'class': 'articleLead'}):
-        article['lead'] = content.find('div', attrs={'class': 'articleLead'}).text.split('/*')[0]
+        article['lead'] = content.find('div', attrs={'class': 'articleLead'}).text.split('/*')[0].strip()
     else:
         article['lead'] = ''
 
     body = content.find('div', attrs={'class': 'articleBody'})
     if not body:
+        print('no article body')
         return
     text = ''
+
     for p in body.find_all('p'):
-        if '/*' in p.text:
+        print('pasus ',p.text)
+        if '/*' in p.text or 'PROČITAJTE' in p.text:
             continue
         text+=''+p.text
 
-    article['text'] = article['lead'].strip()+'. '+text
+
+    if len(body.find_all('p'))==0:
+        for line in body.text.split('\n'):
+            #print('line ', line)
+            if '/*' in line or '})' in line:# or 'PROČITAJTE' in line:
+                continue
+            else:
+                text+=line
+
+        article['text'] = text.strip()
+    else:
+        article['text'] = article['lead']+'. '+text
 
 
     keyword_present = False
@@ -89,8 +131,8 @@ def extract_novosti(url):
         return  #
 
 
-    article['title'] = content.find('title').text.split('|')[0]
-    article['author'] = article_info.split('|')[0]
+    article['title'] = content.find('title').text.split('|')[0].strip()
+    article['author'] = article_info.split('|')[0].strip()
 
     year_counter[year]+=1
 
@@ -98,77 +140,83 @@ def extract_novosti(url):
     comments = {}
 
     if article_info.split('|')[2].split(':')[1].strip()!='0':
-        print(article_info.split('|')[2].split(':')[1].strip())
 
-        #if there are any comments
+        kom  = int(article_info.split('|')[2].split(':')[1].strip())
+        print('komentara ', kom)
+
+        #print(kom/10)
+
 
         driver2.get(url)
         time.sleep(10)
+        el = driver2.find_element_by_class_name("loadComments.topCommentsLink")
+        webdriver.ActionChains(driver2).move_to_element(el).click(el).perform()
+        #time.sleep(5)
 
 
-        driver2.find_element_by_class_name("loadComments.topCommentsLink").click()
-        print(url)
-        time.sleep(5)
-        #driver2.execute_script("window.scrollTo(0, window.scrollY + 200)")
+        i = 1
+        while (i<kom/10):
 
-        '''
-        try:
-            driver.find_element_by_class_name("moreComments").click()
-    
-            time.sleep(3)
-        finally:
-            print('no more comments')
-        '''
+            #driver2.execute_script("window.scrollTo(0, window.scrollY + 800)")
+            print('looking for comment button')
+
+            element = driver2.find_element_by_id('asyncMore')
 
 
-        main_comment_div = driver2.find_element_by_class_name("comments")
+            #element = driver2.find_element_by_css('div[class*="loadingWhiteBox"]')
+            #driver2.execute_script("arguments[0].click();", element)
 
-        comment_divs = main_comment_div.find_elements_by_tag_name('li')
+            #element = driver.find_element_by_css('div[class*="loadingWhiteBox"]')
+            webdriver.ActionChains(driver2).move_to_element(element).click(element).perform()
 
-        comment_id = 1
-        for comment_div in comment_divs:
-            comment = comment_div.find_elements_by_tag_name('div')
-            for c in comment:
-                if c.get_attribute('class')=='comment depth-1':
-                    #print('parent comment')
-                    #print(c.find_element_by_tag_name('p').text)
-                    comments[str(comment_id)] = c.find_element_by_tag_name('p').text
-                    comment_id+=1
-                    child = 1
-                elif c.get_attribute('class')=='comment depth-2':
-                    #print('child comment')
-                    #print(c.find_element_by_tag_name('p').text)
-                    if c.find_element_by_tag_name('p').text not in comments.values():
-                        comments[str(comment_id-1)+'-'+str(child)] = c.find_element_by_tag_name('p').text
-                        child+=1
+            time.sleep(10)
+
+
+            i+=1
+
+        if kom<10:
+            time.sleep(10)
+
+
+        comment_divs = driver2.find_elements_by_tag_name('li')
+
+        comments = get_comments(comment_divs)
+
+        print(len(comments))
 
         article['comments'] = comments
+
+    print('komentara ucitanih ', len(comments))
 
 
     for el in article:
         print(el, article[el])
+        print('\n')
 
     return article
 
 def scrapper_novosti():
-    i=100
+    i=391
 
     for word in pretraga:
-        #if word in ['jezik', 'jezika']:
-        #    continue
+
+        if word in ['jezik', 'jezika','jeziku','jezikom','jezički', 'jezičkog', 'jezičkoga', 'jezičkom', 'jezičkome']:
+            continue
         page_no = 2
         main_url = main+word+end
         driver.get(main_url)
 
-        '''
+
+        time.sleep(10)
+
         driver.find_element_by_class_name("gsc-option-selector").click()
         options = driver.find_elements_by_class_name("gsc-option-menu-item")
         for option in options:
             if option.text == 'Važnosti':
                 option.click()
-        '''
 
-        while page_no < 11:
+
+        while page_no < 10:
             time.sleep(5)
             links = driver.find_elements_by_class_name("gs-title")
 
@@ -194,6 +242,6 @@ def scrapper_novosti():
 
 
 
-scrapper_novosti()
-#extract_novosti("https://www.novosti.rs/vesti/naslovna/drustvo/aktuelno.290.html:774183-PITANjE-DRUGOG-STRANOG-JEZIKA-Umesto-ocena-na-prvom-polugodistu-dobar-zadovoljava-i-istice-se")
-
+#scrapper_novosti()
+#article = extract_novosti("https://www.novosti.rs/vesti/scena.147.html:645984-Јелица-Сретеновић-И-најбољи-морају-да-се-боре-за-улоге")
+#pack_xml(article, 1)

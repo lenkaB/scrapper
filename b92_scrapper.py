@@ -8,7 +8,7 @@ import time
 url_b92 = 'https://www.b92.net/info/vesti/index.php?yyyy=2019&mm=11&dd=30&nav_category=12&nav_id=1624627'
 url_b92_kom = 'https://www.b92.net/info/komentari.php?nav_id=1624627'
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0, '2020':0}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':0}
 article_titles = []
 
 driver = webdriver.Chrome(ChromeDriverManager().install())
@@ -49,7 +49,7 @@ def load_links_from_page_b92(current_article_id):
     return current_article_id
 
 def extract_b92(url):
-    response = requests.get(url, timeout=5)
+    response = requests.get(url, timeout=10)
     content = BeautifulSoup(response.content, "html.parser")
     article_div = content.find_all('article', attrs={"id": "article-content"})
 
@@ -123,7 +123,7 @@ def extract_b92(url):
     year_counter[year] += 1
 
     url_comments = 'https://www.b92.net/info/komentari.php?'+url.split('&')[len(url.split('&'))-1]
-    response = requests.get(url_comments, timeout=5)
+    response = requests.get(url_comments, timeout=10)
     content_comments = BeautifulSoup(response.content, "html.parser")
 
     comments = content_comments.find_all('div', attrs={"class": "comments"})
@@ -169,16 +169,23 @@ def extract_b92(url):
 
 def scrapper_b92(word, current_article_id):
     # search and wait to load
+    time.sleep(10)
     box = driver.find_element_by_id('gsc-i-id2')
     box.clear()
     box.send_keys(word)
     box.send_keys('\ue007')
 
-    time.sleep(3)
+    time.sleep(5)
+
     driver.find_element_by_class_name("gsc-option-selector").click()
+    time.sleep(5)
     options = driver.find_elements_by_class_name("gsc-option")
+
+
     for option in options:
+        print(option.text)
         if option.text == 'Relevantnosti':
+            print('I am trying to click ', option.text, type(option))
             option.click()
 
     # look for page numbers and change pages
@@ -202,10 +209,14 @@ def scrapper_b92(word, current_article_id):
 
     return current_article_id
 
-current_article_id = 167
+current_article_id = 315
 for word in pretraga:
-    if word in ['jezik', 'jezika']:
+    #if word in ['jezik', 'jezika']:
+    #    continue
+
+
+    if word in ['jezik', 'jezika', 'jeziku', 'jezikom', 'jezički', 'jezičkog', 'jezičkoga', 'jezičkom', 'jezičkome']:
         continue
+
     current_article_id = scrapper_b92(word, current_article_id)
 
-#print(year_counter)

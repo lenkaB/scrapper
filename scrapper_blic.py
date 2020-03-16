@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 from scrapper import pretraga,pack_xml
 
-year_counter = {'2015':0, '2016':0, '2017':0, '2018':0,'2019':101, '2020':101}
+year_counter = {'2015':0, '2016':0, '2017':0, '2018':0} # ,'2019':0}
 links = []
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
@@ -12,17 +12,17 @@ from webdriver_manager.chrome import ChromeDriverManager
 def scrapper_blic():
     main = 'https://www.blic.rs/search?q='
 
-    i = 204
+    i = 160
 
     for word in pretraga:
-        if word in ['jezik', 'jezika', 'jeziku']:
+        if word in ['jezik', 'jezika', 'jeziku', 'jezikom', 'jezički']: #,'jezičkim', 'jezičkog', 'jezičkoga', 'jezičkom', 'jezičkome']:
             continue
-        pg = 10
-        while pg<42:
+        pg = 2
+        while pg<6:
             main_url = main + word + '&strana=' + str(pg)
             print('main url ', main_url)
 
-            response = requests.get(main_url, timeout=5)
+            response = requests.get(main_url, timeout=10)
             content = BeautifulSoup(response.content, "html.parser")
 
 
@@ -90,7 +90,7 @@ def extract_blic(url):
 
     year = article['date'].split('.')[2]
 
-    if year not in year_counter or year_counter[year]>100:
+    if year not in year_counter:# or year_counter[year]>100:
         print('wrong year', year)
         return
 
@@ -156,4 +156,4 @@ def extract_blic(url):
 
     return article
 
-scrapper_blic()
+#scrapper_blic()
